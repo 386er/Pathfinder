@@ -1,0 +1,10 @@
+{
+    "browser": true,
+    "jquery": true,
+    "latedef": true,
+    "maxlen": 90,
+    "globals":{"_":true, "define": true,"_define":true},
+    "undef": true,
+    "unused": true,
+    "smarttabs": false
+}
