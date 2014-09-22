@@ -8,7 +8,8 @@ require.config({
 		underscore: 'library/underscore',
 		backbone: 'library/backbone',
 		mustache: 'library/mustache',
-		d3: 'library/d3'
+		d3: 'library/d3',
+		moment: 'library/moment.min'
 	},
 	shim:{
 		d3:{

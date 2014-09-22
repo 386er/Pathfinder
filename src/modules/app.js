@@ -6,7 +6,7 @@ define(['jquery',
 	'underscore',
 	'modules/barChart',
 	'd3',
-	'modules/json'
+	'modules/data'
 ], function($,
 	Backbone,
 	_,
@@ -19,27 +19,13 @@ define(['jquery',
 
 		init : function() {
 
-
-
 			var chart = new BarChart({
-				collection: new Backbone.Collection(json),
-
-				xAttr: 'letter',
-				yAttr: 'frequency'
-
+				el: '#container',
+				collection: new Backbone.Collection(json.data.cluster)
 			});
 
-
-
 			chart.render();
-
-			console.log(chart.collection.pluck(chart.defaults.xAttr));
-
-
-			$('#container').html(chart.el);
-
 		}
-
 	};
 
 	return pageloader;
