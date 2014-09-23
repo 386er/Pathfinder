@@ -1,16 +1,16 @@
-/* global console */
+///* global console */
 
 
 define(['jquery',
 	'backbone',
 	'underscore',
-	'modules/barChart',
+	'modules/pathFinderView',
 	'd3',
 	'modules/data'
 ], function($,
 	Backbone,
 	_,
-	BarChart,
+	PathFinderView,
 	d3,
 	json
 	) {
@@ -19,7 +19,7 @@ define(['jquery',
 
 		init : function() {
 
-			var chart = new BarChart({
+			var chart = new PathFinderView({
 				el: '#container',
 				collection: new Backbone.Collection(json.data.cluster)
 			});

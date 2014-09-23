@@ -1,12 +1,15 @@
+///* global console */
 
 define([
+	'jquery',
 	'backbone',
 	'd3',
 	'underscore',
-	'moment'
-], function(Backbone, d3, _, moment) {
+	'moment',
+	'modules/toolTipView'
+], function($, Backbone, d3, _, moment, ToolTipView) {
 
-	var BarChart  = Backbone.View.extend({
+	var PathFinderView  = Backbone.View.extend({
 
 		defaults: {
 			margin: {top: 20, right: 30, bottom: 30, left:140}
@@ -26,35 +29,37 @@ define([
 					margin.left + ',' + margin.top + ')');
 
 			this._renderAxes();
+			this._prerenderData();
 			this._renderData();
 			this._drawSegmentBorders();
 			this._addToolTip();
+
 
 			return this;
 		},
 
 		_addToolTip: function() {
 			var chart = this;
-			chart.div = d3.select('#container').append('div')
-				.attr('class', 'tooltip')
-				.style('opacity', 0);
+			chart.toolTip = new ToolTipView({
+				model: new Backbone.Model.extend()
+			});
+			$(chart.el).append(this.toolTip.el);
 		},
 
 		_drawSegmentBorders: function() {
 			var margin = this.defaults.margin;
-			var NUMBER_GROUPS = 7;
-			var groupWidth = (this.width / NUMBER_GROUPS);
+			var NUMBER_SEGMENTS = 7;
+			var segmentWidth = (this.width / NUMBER_SEGMENTS);
 			for (
-				var i = 1; i <= 7; i++) {
+				var i = 1; i <= NUMBER_SEGMENTS; i++) {
 				this.svg.append('line')
 					.attr('stroke', 'grey')
 					.attr('stroke-width', '1')
 					.attr('fill', 'red')
-					.attr('x1', groupWidth * i)
+					.attr('x1', segmentWidth * i)
 					.attr('y1', margin.top)
-					.attr('x2', groupWidth * i)
-					.attr('y2', this.height)
-					.attr('transform', 'translate(0,0)');
+					.attr('x2', segmentWidth * i)
+					.attr('y2', this.height);
 			}
 		},
 
@@ -83,71 +88,76 @@ define([
 				.call(yAxis);
 		},
 
-		_renderData: function() {
-			var chart = this,
+		_prerenderData: function() {
+			var chart = this;
+
+			var yScale = this._getYScale(),
 			segmentWidth = (this.width / 7),
-			halfgroupwidth = (this.width / 14),
-			y = this._getYScale();
+			halfsegmentwidth = (this.width / 14);
 
-			var resetToolTip = function() {
-				chart.div
-					.style('top', '20px')
-					.style('left', '20px');
-			};
+			chart.collection.each(
+				function(model) {
+					/*jshint sub:true*/
+					var segmentType = chart._getSegmentType(
+						model.attributes['group_type']);
+					/*jshint sub:false*/
+					model.attributes.x =
+						halfsegmentwidth + segmentWidth *
+						segmentType + chart._ranNum();
 
-			var showToolTip = function() {
-				chart.div
-					.transition().duration(200)
-					.style('opacity', 1);
-			};
+					var clusterTimeStamp = chart._getClusterTime(model.attributes);
+					var clusterDate = moment.unix(clusterTimeStamp).toDate();
+					model.attributes.y = yScale(clusterDate);
 
-			this.svg.selectAll('circle')
+					var count = model.attributes.count;
+					model.attributes.r = 5 + count;
+				}
+			);
+		},
+
+		_renderData: function() {
+			var chart = this;
+
+			chart.svg.selectAll('circle')
 				.data(chart.collection.models)
 				.enter()
 				.append('circle')
 				.attr('class', 'mention')
-				.attr('cx', function(d) {
-						/*jshint sub:true*/
-					return halfgroupwidth +
-						segmentWidth *
-						(chart._getGroupType(d.attributes['group_type'] - 2 ) ) +
-						chart._ranNum();
-						/*jshint sub:false*/
+				.attr('cx', function(model) {
+					return model.attributes.x;
 				})
-				.attr('cy', function(d) {
-					var date = moment.unix(
-						chart._getClusterTime(d.attributes)
-					).toDate();
-					return y(date);
+				.attr('cy', function(model) {
+					return model.attributes.y;
 				})
-				.attr('r', function(model) {return 5 + model.attributes.count;})
-				.on('mouseover', function(d) {
+				.attr('r', function(model) {
+					return model.attributes.r;
+				})
+				.on('mouseover', function(model) {
+
 					d3.select(this).transition().duration(200)
 						.style('opacity', 0.5)
 						.style('stroke', 'orange');
-					chart.div.transition().duration(0)
-						.style('left', (d3.mouse(this)[0] + 55) + 'px')
-						.style('top', (d3.mouse(this)[1] + 45)  + 'px')
-						.each('end', showToolTip);
 
-										/*jshint sub:true*/
-					chart.div.html(
-						'<span>' + chart._setMentionInfo(d.attributes) + '</span>');
-										/*jshint sub:false*/
+					chart.toolTip.model = model;
+					chart.toolTip.render();
+					chart.toolTip.move(
+						(d3.mouse(this)[0] + 55),
+						(d3.mouse(this)[1] + 45));
+					chart.toolTip.show();
+
 				})
 				.on('mousemove', function() {
-					chart.div
-						.style('left', (d3.mouse(this)[0] + 55 ) + 'px')
-						.style('top', (d3.mouse(this)[1] + 45)  + 'px');
-
+					chart.toolTip.move(
+						(d3.mouse(this)[0] + 55),
+						(d3.mouse(this)[1] + 45));
 				})
 				.on('mouseout', function() {
 					d3.select(this).transition().duration(200)
 						.style('opacity', 1)
 						.style('stroke', '#EFF5FB');
-					chart.div.transition().duration(200)
-						.style('opacity', 0)
-						.each('end', resetToolTip);
+
+					chart.toolTip.hide();
+
 				});
 
 		},
@@ -167,8 +177,8 @@ define([
 			var index = [];
 			var data = this.collection.models;
 			var that = this;
-			data.forEach(function(d) {
-				index.push(that._getClusterTime(d.attributes));
+			data.forEach(function(model) {
+				index.push(that._getClusterTime(model.attributes));
 			});
 			index = [d3.max(index) + 3000, d3.min(index) - 1800];
 			index = index.map(function(entry) {
@@ -177,12 +187,12 @@ define([
 			return index;
 		},
 
-		_getGroupType: function(number) {
-			if (number >= 6) {
+		_getSegmentType: function(number) {
+			if (number > 6) {
 				return 6;
 			}
 			else {
-				return number;
+				return number - 2;
 			}
 		},
 
@@ -196,35 +206,10 @@ define([
 			return d3.scale.linear()
 				.range([0, this.width])
 				.domain([1, 8]);
-		},
-
-		_setMentionInfo: function(d) {
-			var infoline = '';
-			var mentions = '';
-			if (d.count == 1) {
-				infoline = '1 mention is here <br>';
-			}
-			else {
-				infoline = d.count + ' mentions are here <br>';
-			}
-			for (
-				var i = 0; i < d.items.length; i++ ) {
-
-				if (d.items[i].title.length <= 50 ) {
-					mentions += d.items[i].title + ' <br>';
-				}
-				else {
-					mentions += d.items[i].title.substring(0, 50) +
-					'... <br>';
-				}
-			}
-			return infoline + mentions;
 		}
-
-
 
 	});
 
-	return BarChart;
+	return PathFinderView;
 
 });
