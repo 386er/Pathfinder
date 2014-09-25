@@ -1,16 +1,18 @@
-///* global console */
+/* global console */
 
 
 define(['jquery',
 	'backbone',
 	'underscore',
 	'modules/pathFinderView',
+	'modules/pathFinderCollection',
 	'd3',
 	'modules/data'
 ], function($,
 	Backbone,
 	_,
 	PathFinderView,
+	pathFinderCollection,
 	d3,
 	json
 	) {
@@ -21,10 +23,12 @@ define(['jquery',
 
 			var chart = new PathFinderView({
 				el: '#container',
-				collection: new Backbone.Collection(json.data.cluster)
+				collection: new pathFinderCollection(json.data.cluster)
 			});
 
 			chart.render();
+
+			console.log(chart.collection);
 
 		}
 	};
