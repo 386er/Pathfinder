@@ -49,11 +49,11 @@ define(['jquery',
 		},
 
 		setMentionInfo: function(attributes) {
-			_.each(attributes.items, function(item) {
+		/*	_.each(attributes.items, function(item) {
 				if (item.title.length > 50) {
 					item.title = item.title.substring(0, 50) + '...';
 				}
-			});
+			}); */
 			if (attributes.items.length > 10) {
 				attributes.items = attributes.items.slice(0, 10);
 			}

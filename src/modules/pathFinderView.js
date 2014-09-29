@@ -1,13 +1,12 @@
-///* global console */
+/* global console */
 
 define([
 	'jquery',
 	'backbone',
 	'd3',
 	'underscore',
-	'moment',
 	'modules/toolTipView'
-], function($, Backbone, d3, _, moment, ToolTipView) {
+], function($, Backbone, d3, _, ToolTipView) {
 
 	var PathFinderView  = Backbone.View.extend({
 
@@ -15,24 +14,28 @@ define([
 			margin: {top: 20, right: 30, bottom: 30, left:140}
 		},
 
+		initialize: function() {
+			this.collection.on('reset', this.render, this);
+		},
+
 		render: function() {
-			var margin = this.defaults.margin;
-			this.width = this.el.clientWidth - margin.left - margin.right;
-			this.height = this.el.clientHeight - margin.top - margin.bottom;
 
-			this.svg = d3.select(this.el).append('svg')
-				.attr('width', this.width + margin.left + margin.right)
-				.attr('height', this.height + margin.top + margin.bottom)
-				.attr('id', 'svg')
-				.append('g')
-				.attr('transform', 'translate(' +
-					margin.left + ',' + margin.top + ')');
+			var timestamp = Date.now();
 
+			this._clearChart();
+			this._setWidthHeight();
+			this._createSVG();
 			this._renderAxes();
-			this.collection.renderData();
+			this.collection.prepareData();
 			this._renderData();
 			this._drawSegmentBorders();
 			this._addToolTip();
+
+			var duration = (Date.now() - timestamp) / 1000;
+			console.log('Render took ' +
+				duration + ' seconds');
+
+			this.duration = duration;
 
 			return this;
 		},
@@ -43,6 +46,23 @@ define([
 				model: new Backbone.Model.extend()
 			});
 			$(chart.el).append(this.toolTip.el);
+		},
+
+		_clearChart: function() {
+			d3.select('svg').selectAll('*').remove();
+			this.$el.html('');
+
+		},
+
+		_createSVG: function() {
+			var margin = this.defaults.margin;
+			this.svg = d3.select(this.el).append('svg')
+				.attr('width', this.width + margin.left + margin.right)
+				.attr('height', this.height + margin.top + margin.bottom)
+				.attr('id', 'svg')
+				.append('g')
+				.attr('transform', 'translate(' +
+					margin.left + ',' + margin.top + ')');
 		},
 
 		_drawSegmentBorders: function() {
@@ -99,8 +119,8 @@ define([
 									.attr('class', 'connectionline')
 									.attr('x1', model.attributes.x)
 									.attr('y1', yScale(model.attributes.y))
-									.attr('x2', connection[0])
-									.attr('y2', yScale(connection[1]));
+									.attr('x2', connection.x)
+									.attr('y2', yScale(connection.y));
 							}
 						);
 					}
@@ -134,19 +154,19 @@ define([
 					chart.toolTip.model = model;
 					chart.toolTip.render();
 					chart.toolTip.move(
-						(d3.mouse(this)[0] - 20 ),
+						(d3.mouse(this)[0] - 10 ),
 						(d3.mouse(this)[1] + 45));
 					chart.toolTip.show();
 
 				})
 				.on('mousemove', function() {
 					chart.toolTip.move(
-						(d3.mouse(this)[0] - 20 ),
+						(d3.mouse(this)[0] - 10 ),
 						(d3.mouse(this)[1] + 45));
 				})
 				.on('mouseout', function() {
 					d3.select(this)
-						.style('stroke-width', 2);
+						.style('stroke-width', 1);
 
 					chart.toolTip.hide();
 
@@ -164,6 +184,12 @@ define([
 			return d3.scale.linear()
 				.range([0, this.width])
 				.domain([1, 8]);
+		},
+
+		_setWidthHeight: function() {
+			var margin = this.defaults.margin;
+			this.width = this.el.clientWidth - margin.left - margin.right;
+			this.height = this.el.clientHeight - margin.top - margin.bottom;
 		}
 
 	});
